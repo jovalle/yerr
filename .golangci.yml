@@ -5,57 +5,8 @@ run:
   tests: true
   modules-download-mode: readonly
 
-linters-settings:
-  errcheck:
-    check-type-assertions: true
-    check-blank: true
-
-  govet:
-    enable-all: true
-    disable:
-      - shadow
-
-  gocyclo:
-    min-complexity: 15
-
-  goconst:
-    min-len: 3
-    min-occurrences: 3
-
-  misspell:
-    locale: US
-
-  lll:
-    line-length: 120
-    tab-width: 1
-
-  unused:
-    check-exported: false
-
-  unparam:
-    check-exported: false
-
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - experimental
-      - opinionated
-      - performance
-      - style
-
-  revive:
-    rules:
-      - name: exported
-        disabled: false
-        arguments:
-          - "checkPrivateReceivers"
-          - "sayRepetitiveInsteadOfStutters"
-
-  staticcheck:
-    checks: ["all"]
-
 linters:
-  default: false
+  default: none
   enable:
     - errcheck       # Check for unchecked errors
     - govet          # Vet examines Go source code and reports suspicious constructs
@@ -78,25 +29,68 @@ linters:
     - bidichk        # Checks for dangerous unicode character sequences
     - contextcheck   # Check for misuse of context package
     - errname        # Checks that sentinel errors are prefixed with the Err
+    - nilnil         # Checks for returning nil, nil
+    - tparallel      # Detects inappropriate usage of t.Parallel() in tests
+    - wastedassign   # Finds wasted assignment statements
+
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: false
+
+    govet:
+      enable-all: true
+      disable:
+        - shadow
+        - fieldalignment
+
+    gocyclo:
+      min-complexity: 15
+
+    goconst:
+      min-len: 3
+      min-occurrences: 3
+
+    misspell:
+      locale: US
+
+    lll:
+      line-length: 120
+      tab-width: 1
+
+    unparam:
+      check-exported: false
+
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - experimental
+        - opinionated
+        - performance
+        - style
+
+    revive:
+      rules:
+        - name: exported
+          disabled: false
+          arguments:
+            - "checkPrivateReceivers"
+            - "sayRepetitiveInsteadOfStutters"
+
+    staticcheck:
+      checks: ["all"]
+
+  exclusions:
+    rules:
+      # Exclude some linters from running on test files
+      - path: _test\.go
+        linters:
+          - gocyclo
+          - errcheck
+          - gosec
+          - goconst
+          - unparam
 
 issues:
-  exclude-rules:
-    # Exclude some linters from running on tests files
-    - path: _test\.go
-      linters:
-        - gocyclo
-        - errcheck
-        - gosec
-        - goconst
-        - unparam
-
   max-issues-per-linter: 0
   max-same-issues: 0
-  new: false
-
-output:
-  formats:
-    stdout: colored-line-number
-  print-issued-lines: true
-  print-linter-name: true
-  sort-results: true

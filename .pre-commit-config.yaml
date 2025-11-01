@@ -30,6 +30,11 @@ repos:
       - id: go-test-mod
         args: ['-race']
 
+  - repo: https://github.com/golangci/golangci-lint
+    rev: v2.6.0
+    hooks:
+      - id: golangci-lint
+
   - repo: https://github.com/igorshubovych/markdownlint-cli
     rev: v0.43.0
     hooks:

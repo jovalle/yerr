@@ -1,3 +1,6 @@
+// Package cpu provides CPU load testing functionality with support for
+// detecting CPU topology, managing worker allocation, and generating
+// comprehensive test results with performance metrics.
 package cpu
 
 import (
@@ -126,12 +129,12 @@ func PrintResult(result *TestResult) {
 
 	fmt.Println()
 	fmt.Println(separator)
-	cyan.Println("🔥 CPU LOAD TEST RESULTS 🔥")
+	_, _ = cyan.Println("🔥 CPU LOAD TEST RESULTS 🔥")
 	fmt.Println(separator)
 
 	// Summary section
 	fmt.Println()
-	white.Println("📊 SUMMARY")
+	_, _ = white.Println("📊 SUMMARY")
 	fmt.Printf("  Duration:          %s\n", blue.Sprint(result.Duration.Round(time.Millisecond)))
 	fmt.Printf("  Workers:           %s\n", white.Sprint(result.Workers))
 

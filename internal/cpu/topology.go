@@ -8,6 +8,10 @@ import (
 	"strings"
 )
 
+const (
+	osDarwin = "darwin"
+)
+
 // Topology contains information about the CPU architecture
 type Topology struct {
 	LogicalCores      int
@@ -54,7 +58,7 @@ func DetectTopology() *Topology {
 	}
 
 	// Try to detect Apple Silicon heterogeneous architecture
-	if runtime.GOOS == "darwin" {
+	if runtime.GOOS == osDarwin {
 		if detectAppleSiliconTopology(topology) {
 			return topology
 		}
@@ -151,7 +155,7 @@ func DetectCPUInfo() *Info {
 		Architecture: runtime.GOARCH,
 	}
 
-	if runtime.GOOS == "darwin" {
+	if runtime.GOOS == osDarwin {
 		detectDarwinCPUInfo(info)
 	}
 

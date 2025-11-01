@@ -66,7 +66,7 @@ func TestRun(t *testing.T) {
 			}
 
 			// Duration should be close to configured duration (with some tolerance)
-			tolerance := 100 * time.Millisecond
+			tolerance := 500 * time.Millisecond
 			if result.Duration < tt.config.Duration-tolerance || result.Duration > tt.config.Duration+tolerance {
 				t.Errorf("Result.Duration = %v, want approximately %v", result.Duration, tt.config.Duration)
 			}

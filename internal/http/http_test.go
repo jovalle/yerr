@@ -103,16 +103,17 @@ func TestRun_RequestCount(t *testing.T) {
 				t.Error("Result.ReqsPerSecond should be greater than 0")
 			}
 
-			if result.AvgLatency <= 0 {
-				t.Error("Result.AvgLatency should be greater than 0")
+			// Latency can be 0 on very fast systems (e.g., Windows localhost with high-resolution timer)
+			if result.AvgLatency < 0 {
+				t.Error("Result.AvgLatency should not be negative")
 			}
 
-			if result.MinLatency <= 0 {
-				t.Error("Result.MinLatency should be greater than 0")
+			if result.MinLatency < 0 {
+				t.Error("Result.MinLatency should not be negative")
 			}
 
-			if result.MaxLatency <= 0 {
-				t.Error("Result.MaxLatency should be greater than 0")
+			if result.MaxLatency < 0 {
+				t.Error("Result.MaxLatency should not be negative")
 			}
 
 			if result.MinLatency > result.MaxLatency {
@@ -373,21 +374,22 @@ func TestCalculatePercentile(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := calculatePercentile(tt.sorted, tt.percentile)
 			// Use approximate comparison for floating point results
-			if len(tt.sorted) == 0 {
+			switch len(tt.sorted) {
+			case 0:
 				if result != tt.want {
 					t.Errorf("calculatePercentile(%v, %f) = %v, want %v", tt.sorted, tt.percentile, result, tt.want)
 				}
-			} else if len(tt.sorted) == 1 {
+			case 1:
 				if result != tt.want {
 					t.Errorf("calculatePercentile(%v, %f) = %v, want %v", tt.sorted, tt.percentile, result, tt.want)
 				}
-			} else {
+			default:
 				// For multiple elements, check bounds
-				min := tt.sorted[0]
-				max := tt.sorted[len(tt.sorted)-1]
-				if result < min || result > max {
+				minVal := tt.sorted[0]
+				maxVal := tt.sorted[len(tt.sorted)-1]
+				if result < minVal || result > maxVal {
 					t.Errorf("calculatePercentile(%v, %f) = %v, should be between %v and %v",
-						tt.sorted, tt.percentile, result, min, max)
+						tt.sorted, tt.percentile, result, minVal, maxVal)
 				}
 			}
 		})

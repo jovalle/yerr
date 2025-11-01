@@ -198,11 +198,8 @@ func TestSysctlString(t *testing.T) {
 		result := sysctlString("kern.ostype")
 		if result == "" {
 			t.Log("sysctlString returned empty for kern.ostype (may be acceptable)")
-		} else {
-			// Should contain "Darwin"
-			if !strings.Contains(result, "Darwin") {
-				t.Logf("sysctlString(kern.ostype) = %q, expected to contain 'Darwin'", result)
-			}
+		} else if !strings.Contains(result, "Darwin") {
+			t.Logf("sysctlString(kern.ostype) = %q, expected to contain 'Darwin'", result)
 		}
 	}
 

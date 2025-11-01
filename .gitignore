@@ -4,13 +4,14 @@
 *.dll
 *.so
 *.dylib
-yerr
+/yerr
 
 # Test binary, built with `go test -c`
 *.test
 
 # Output of the go coverage tool
 *.out
+coverage/
 coverage.html
 coverage.txt
 coverage.xml

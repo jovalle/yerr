@@ -1,3 +1,6 @@
+// Package http provides HTTP load testing functionality with configurable
+// workers, request counts, and methods. It tracks detailed metrics including
+// latency percentiles, status codes, and error types.
 package http
 
 import (
@@ -303,7 +306,7 @@ func makeRequest(ctx context.Context, client *http.Client, url, method string) r
 		}
 		return requestResult{latency: latency, err: err, errType: errRead}
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	bytes, err := io.Copy(io.Discard, resp.Body)
 	if err != nil {
@@ -351,12 +354,12 @@ func PrintResult(result *TestResult) {
 
 	fmt.Println()
 	fmt.Println(separator)
-	cyan.Println("⚡ HTTP LOAD TEST RESULTS ⚡")
+	_, _ = cyan.Println("⚡ HTTP LOAD TEST RESULTS ⚡")
 	fmt.Println(separator)
 
 	// Summary section
 	fmt.Println()
-	white.Println("📊 SUMMARY")
+	_, _ = white.Println("📊 SUMMARY")
 	fmt.Printf("  Duration:          %s\n", blue.Sprint(result.Duration.Round(time.Millisecond)))
 	fmt.Printf("  Total Requests:    %s\n", white.Sprint(result.TotalRequests))
 
@@ -398,14 +401,14 @@ func PrintResult(result *TestResult) {
 
 	// Latency section
 	fmt.Println()
-	white.Println("⏱️ LATENCY")
+	_, _ = white.Println("⏱️ LATENCY")
 	fmt.Printf("  Average:           %s\n", formatLatency(result.AvgLatency))
 	fmt.Printf("  Min:               %s\n", green.Sprint(formatLatency(result.MinLatency)))
 	fmt.Printf("  Max:               %s\n", red.Sprint(formatLatency(result.MaxLatency)))
 
 	// Percentiles
 	fmt.Println()
-	white.Println("📈 PERCENTILES")
+	_, _ = white.Println("📈 PERCENTILES")
 	fmt.Printf("  50%% (median):      %s\n", formatLatency(result.P50Latency))
 	fmt.Printf("  90%%:               %s\n", formatLatency(result.P90Latency))
 	fmt.Printf("  95%%:               %s\n", yellow.Sprint(formatLatency(result.P95Latency)))
@@ -414,7 +417,7 @@ func PrintResult(result *TestResult) {
 	// Status codes
 	if len(result.StatusCodes) > 0 {
 		fmt.Println()
-		white.Println("📋 STATUS CODES")
+		_, _ = white.Println("📋 STATUS CODES")
 
 		// Sort status codes
 		codes := make([]int, 0, len(result.StatusCodes))
