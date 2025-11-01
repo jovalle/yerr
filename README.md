@@ -1,59 +1,5 @@
 <div align="center">
 
-<style>
-@keyframes yerr-zoom {
-  /* Settled in center */
-  0%, 100% {
-    transform: translateX(0) scale(1);
-    opacity: 1;
-  }
-  25% {
-    transform: translateX(0) scale(1);
-    opacity: 1;
-  }
-  /* Accelerate and exit right */
-  40% {
-    transform: translateX(150vw) scale(1.5);
-    opacity: 0;
-  }
-  /* Quick zoom left to right - start off screen */
-  45% {
-    transform: translateX(-130vw) scale(0.8);
-    opacity: 0;
-  }
-  48% {
-    transform: translateX(-130vw) scale(0.8);
-    opacity: 1;
-  }
-  58% {
-    transform: translateX(150vw) scale(0.8);
-    opacity: 1;
-  }
-  60% {
-    transform: translateX(150vw) scale(0.8);
-    opacity: 0;
-  }
-  /* Zoom from left to center and settle */
-  63% {
-    transform: translateX(-130vw) scale(1.2);
-    opacity: 0;
-  }
-  66% {
-    transform: translateX(-130vw) scale(1.2);
-    opacity: 1;
-  }
-  80% {
-    transform: translateX(0) scale(1);
-    opacity: 1;
-  }
-}
-
-.yerr-logo {
-  animation: yerr-zoom 6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-  transform-origin: center;
-}
-</style>
-
 <img src=".github/assets/yerr.png" alt="yerr logo" width="200" class="yerr-logo"/>
 
 # `yerr`
