@@ -296,3 +296,105 @@ func TestTopology_EdgeCases(t *testing.T) {
 		}
 	})
 }
+
+func TestParseLinuxCPUInfoPhysicalCores(t *testing.T) {
+	const cpuinfo = `
+processor   : 0
+physical id : 0
+core id     : 0
+cpu cores   : 2
+
+processor   : 1
+physical id : 0
+core id     : 0
+cpu cores   : 2
+
+processor   : 2
+physical id : 0
+core id     : 1
+cpu cores   : 2
+
+processor   : 3
+physical id : 0
+core id     : 1
+cpu cores   : 2
+
+processor   : 4
+physical id : 1
+core id     : 0
+cpu cores   : 2
+
+processor   : 5
+physical id : 1
+core id     : 0
+cpu cores   : 2
+
+processor   : 6
+physical id : 1
+core id     : 1
+cpu cores   : 2
+
+processor   : 7
+physical id : 1
+core id     : 1
+cpu cores   : 2
+`
+
+	if got := parseLinuxCPUInfoPhysicalCores(cpuinfo); got != 4 {
+		t.Fatalf("parseLinuxCPUInfoPhysicalCores() = %d, want 4", got)
+	}
+}
+
+func TestParseLinuxCPUInfoPhysicalCores_CPUCoresFallback(t *testing.T) {
+	const cpuinfo = `
+processor : 0
+cpu cores : 8
+
+processor : 1
+cpu cores : 8
+`
+
+	if got := parseLinuxCPUInfoPhysicalCores(cpuinfo); got != 8 {
+		t.Fatalf("parseLinuxCPUInfoPhysicalCores() fallback = %d, want 8", got)
+	}
+}
+
+func TestParseLSCPUSummaryPhysicalCores(t *testing.T) {
+	const summary = `
+Architecture:                    x86_64
+CPU(s):                          16
+Thread(s) per core:              2
+Core(s) per socket:              4
+Socket(s):                       2
+`
+
+	if got := parseLSCPUSummaryPhysicalCores(summary); got != 8 {
+		t.Fatalf("parseLSCPUSummaryPhysicalCores() = %d, want 8", got)
+	}
+}
+
+func TestParseWindowsWMICCoreCounts(t *testing.T) {
+	const output = `
+NumberOfCores=8
+NumberOfLogicalProcessors=16
+
+`
+
+	logical, physical, ok := parseWindowsWMICCoreCounts(output)
+	if !ok {
+		t.Fatal("parseWindowsWMICCoreCounts() expected ok=true")
+	}
+	if logical != 16 || physical != 8 {
+		t.Fatalf("parseWindowsWMICCoreCounts() = logical:%d physical:%d, want logical:16 physical:8", logical, physical)
+	}
+}
+
+func TestParseWindowsPowerShellCoreCounts(t *testing.T) {
+	logical, physical, ok := parseWindowsPowerShellCoreCounts("8\n16\n")
+	if !ok {
+		t.Fatal("parseWindowsPowerShellCoreCounts() expected ok=true")
+	}
+	if logical != 16 || physical != 8 {
+		t.Fatalf("parseWindowsPowerShellCoreCounts() = logical:%d physical:%d, want logical:16 physical:8", logical, physical)
+	}
+}
