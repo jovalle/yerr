@@ -3,8 +3,11 @@ package http
 import (
 	"context"
 	"fmt"
+	"io"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -256,6 +259,128 @@ func TestRun_SlowServer(t *testing.T) {
 	// Latencies should reflect the delay
 	if result.MinLatency < 40*time.Millisecond {
 		t.Errorf("MinLatency = %v, expected at least 40ms due to server delay", result.MinLatency)
+	}
+}
+
+func TestRun_InvalidConfig(t *testing.T) {
+	tests := []struct {
+		name   string
+		config TestConfig
+	}{
+		{
+			name: "zero workers",
+			config: TestConfig{
+				URL:       "https://example.com",
+				Method:    "GET",
+				Workers:   0,
+				TotalReqs: 1,
+			},
+		},
+		{
+			name: "negative requests",
+			config: TestConfig{
+				URL:       "https://example.com",
+				Method:    "GET",
+				Workers:   1,
+				TotalReqs: -1,
+			},
+		},
+		{
+			name: "duration mode without duration",
+			config: TestConfig{
+				URL:         "https://example.com",
+				Method:      "GET",
+				Workers:     1,
+				UseDuration: true,
+				Duration:    0,
+			},
+		},
+		{
+			name: "empty method",
+			config: TestConfig{
+				URL:       "https://example.com",
+				Method:    "",
+				Workers:   1,
+				TotalReqs: 1,
+			},
+		},
+		{
+			name: "negative timeout",
+			config: TestConfig{
+				URL:       "https://example.com",
+				Method:    "GET",
+				Workers:   1,
+				TotalReqs: 1,
+				Timeout:   -1 * time.Second,
+			},
+		},
+		{
+			name: "conflicting auth",
+			config: TestConfig{
+				URL:         "https://example.com",
+				Method:      "GET",
+				Workers:     1,
+				TotalReqs:   1,
+				BasicAuth:   &BasicAuth{Username: "jay", Password: "secret"},
+				BearerToken: "token",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := Run(tt.config)
+			if err == nil {
+				t.Fatalf("Run() expected error, got nil result=%v", result)
+			}
+		})
+	}
+}
+
+func TestPrintResult_ZeroRequestsNoNaN(t *testing.T) {
+	result := &TestResult{
+		Duration:      10 * time.Millisecond,
+		TotalRequests: 0,
+		SuccessCount:  0,
+		FailureCount:  0,
+		StatusCodes:   map[int]int64{},
+	}
+
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("Pipe() error = %v", err)
+	}
+	os.Stdout = w
+
+	PrintResult(result)
+
+	_ = w.Close()
+	os.Stdout = oldStdout
+
+	out, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("ReadAll() error = %v", err)
+	}
+	if strings.Contains(string(out), "NaN%") {
+		t.Fatalf("PrintResult output contains NaN%%: %s", out)
+	}
+}
+
+func TestAddLatencySample_Bounded(t *testing.T) {
+	samples := make([]time.Duration, 0, maxLatencySamples)
+	var observed int64
+	rng := rand.New(rand.NewSource(1))
+
+	for i := 0; i < maxLatencySamples+5000; i++ {
+		addLatencySample(&samples, &observed, time.Duration(i)*time.Microsecond, rng)
+	}
+
+	if observed != int64(maxLatencySamples+5000) {
+		t.Fatalf("observed = %d, want %d", observed, maxLatencySamples+5000)
+	}
+	if len(samples) != maxLatencySamples {
+		t.Fatalf("len(samples) = %d, want %d", len(samples), maxLatencySamples)
 	}
 }
 
@@ -538,7 +663,10 @@ func TestMakeRequest_ConnectionError(t *testing.T) {
 	defer cancel()
 
 	// Use an invalid URL that will cause connection errors
-	result := makeRequest(ctx, client, "http://invalid-domain-that-does-not-exist-12345.com:80", "GET")
+	result := makeRequest(ctx, client, &TestConfig{
+		URL:    "http://invalid-domain-that-does-not-exist-12345.com:80",
+		Method: "GET",
+	})
 
 	if result.err == nil {
 		t.Error("Expected error for invalid domain")
@@ -564,10 +692,87 @@ func TestMakeRequest_Timeout(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	result := makeRequest(ctx, client, ts.URL, "GET")
+	result := makeRequest(ctx, client, &TestConfig{
+		URL:    ts.URL,
+		Method: "GET",
+	})
 
 	// Should have a timeout error
 	if result.err == nil {
 		t.Error("Expected timeout error")
+	}
+}
+
+func TestMakeRequest_CustomRequestOptions(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("X-Test"); got != "yes" {
+			t.Errorf("X-Test header = %q, want yes", got)
+		}
+		user, pass, ok := r.BasicAuth()
+		if !ok {
+			t.Error("expected basic auth")
+		}
+		if user != "jay" || pass != "secret" {
+			t.Errorf("basic auth = %q:%q, want jay:secret", user, pass)
+		}
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("ReadAll() error = %v", err)
+		}
+		if string(body) != "hello" {
+			t.Errorf("body = %q, want hello", string(body))
+		}
+
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("OK"))
+	}))
+	defer ts.Close()
+
+	client := &http.Client{Timeout: 1 * time.Second}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	result := makeRequest(ctx, client, &TestConfig{
+		URL:    ts.URL,
+		Method: "POST",
+		Headers: map[string][]string{
+			"X-Test": {"yes"},
+		},
+		Body: []byte("hello"),
+		BasicAuth: &BasicAuth{
+			Username: "jay",
+			Password: "secret",
+		},
+	})
+
+	if result.err != nil {
+		t.Fatalf("makeRequest() unexpected error: %v", result.err)
+	}
+	if result.statusCode != http.StatusOK {
+		t.Fatalf("statusCode = %d, want %d", result.statusCode, http.StatusOK)
+	}
+}
+
+func TestMakeRequest_BearerToken(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("Authorization"); got != "Bearer token123" {
+			t.Errorf("Authorization header = %q, want Bearer token123", got)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	client := &http.Client{Timeout: 1 * time.Second}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	result := makeRequest(ctx, client, &TestConfig{
+		URL:         ts.URL,
+		Method:      "GET",
+		BearerToken: "token123",
+	})
+
+	if result.err != nil {
+		t.Fatalf("makeRequest() unexpected error: %v", result.err)
 	}
 }
