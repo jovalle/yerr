@@ -23,15 +23,21 @@ type TestConfig struct {
 
 // TestResult contains statistics from a CPU load test
 type TestResult struct {
-	Duration       time.Duration
-	Workers        int
-	TotalOps       int64
-	OpsPerSecond   float64
-	CPUUtilization float64
+	Duration     time.Duration
+	Workers      int
+	TotalOps     int64
+	OpsPerSecond float64
 }
 
 // Run executes a CPU load test with the given configuration
 func Run(config TestConfig) (*TestResult, error) {
+	if config.Workers < 0 {
+		return nil, fmt.Errorf("workers must be >= 0")
+	}
+	if config.Duration < 0 {
+		return nil, fmt.Errorf("duration must be >= 0")
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), config.Duration)
 	defer cancel()
 
@@ -40,7 +46,6 @@ func Run(config TestConfig) (*TestResult, error) {
 	opsChan := make(chan int64, config.Workers)
 
 	startTime := time.Now()
-	startCPU := getCPUTime()
 
 	// Launch workers
 	for i := 0; i < config.Workers; i++ {
@@ -64,22 +69,17 @@ func Run(config TestConfig) (*TestResult, error) {
 	}
 
 	endTime := time.Now()
-	endCPU := getCPUTime()
 	duration := endTime.Sub(startTime)
-	cpuDiff := endCPU - startCPU
-
-	// Calculate CPU utilization as percentage
-	cpuUtilization := (float64(cpuDiff) / float64(duration.Nanoseconds())) * 100
-	if cpuUtilization > 100 {
-		cpuUtilization = 100.0
+	opsPerSecond := 0.0
+	if duration > 0 {
+		opsPerSecond = float64(totalOps) / duration.Seconds()
 	}
 
 	return &TestResult{
-		Duration:       duration,
-		Workers:        config.Workers,
-		TotalOps:       totalOps,
-		OpsPerSecond:   float64(totalOps) / duration.Seconds(),
-		CPUUtilization: cpuUtilization,
+		Duration:     duration,
+		Workers:      config.Workers,
+		TotalOps:     totalOps,
+		OpsPerSecond: opsPerSecond,
 	}, nil
 }
 
@@ -107,13 +107,6 @@ func cpuIntensiveWork(ctx context.Context) int64 {
 			ops++
 		}
 	}
-}
-
-// getCPUTime returns the current CPU time in nanoseconds
-func getCPUTime() int64 {
-	var rusage runtime.MemStats
-	runtime.ReadMemStats(&rusage)
-	return time.Now().UnixNano()
 }
 
 // PrintResult displays the test result in a formatted way with colors and emojis

@@ -138,11 +138,10 @@ func TestCPUIntensiveWorkCancellation(t *testing.T) {
 
 func TestTestResult(t *testing.T) {
 	result := &TestResult{
-		Duration:       1 * time.Second,
-		Workers:        4,
-		TotalOps:       1000000,
-		OpsPerSecond:   1000000.0,
-		CPUUtilization: 95.5,
+		Duration:     1 * time.Second,
+		Workers:      4,
+		TotalOps:     1000000,
+		OpsPerSecond: 1000000.0,
 	}
 
 	// Test that PrintResult doesn't panic
@@ -341,5 +340,36 @@ func TestRun_VeryShortDuration(t *testing.T) {
 	// Should have some operations even with very short duration
 	if result.TotalOps < 0 {
 		t.Error("TotalOps should be >= 0")
+	}
+}
+
+func TestRun_InvalidConfig(t *testing.T) {
+	tests := []struct {
+		name   string
+		config TestConfig
+	}{
+		{
+			name: "negative workers",
+			config: TestConfig{
+				Workers:  -1,
+				Duration: 10 * time.Millisecond,
+			},
+		},
+		{
+			name: "negative duration",
+			config: TestConfig{
+				Workers:  1,
+				Duration: -1 * time.Millisecond,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := Run(tt.config)
+			if err == nil {
+				t.Fatalf("Run() expected error, got nil result=%v", result)
+			}
+		})
 	}
 }
