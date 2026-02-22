@@ -174,7 +174,7 @@ release: ## Create and push a release tag (usage: make release VERSION=v1.0.0)
 # Example run targets
 run-cpu: build ## Run CPU test example
 	@echo "Running CPU load test example..."
-	$(BUILD_DIR)/$(BINARY_NAME) cpu -w 4 -d 5
+	$(BUILD_DIR)/$(BINARY_NAME) cpu load -w 4 -d 5
 
 run-http: build ## Run HTTP test example (requires a running server)
 	@echo "Running HTTP load test example..."

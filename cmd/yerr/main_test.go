@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -105,6 +106,34 @@ func TestCPULoadCommand(t *testing.T) {
 		if !strings.Contains(outputStr, expected) {
 			t.Errorf("cpu load output should contain %q, got: %s", expected, outputStr)
 		}
+	}
+}
+
+func TestCPULoadCommandJSON(t *testing.T) {
+	cmd := exec.Command(getBinaryPath(), "cpu", "load", "-w", "1", "-d", "1", "--json")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("cpu load --json failed: %v, output: %s", err, output)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(output, &payload); err != nil {
+		t.Fatalf("invalid JSON output: %v, output: %s", err, output)
+	}
+	if payload["type"] != "cpu_load_result" {
+		t.Fatalf("unexpected type field: %#v", payload["type"])
+	}
+}
+
+func TestCPULoadCommandNoColor(t *testing.T) {
+	cmd := exec.Command(getBinaryPath(), "cpu", "load", "-w", "1", "-d", "1", "--no-color")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("cpu load --no-color failed: %v, output: %s", err, output)
+	}
+
+	if strings.Contains(string(output), "\x1b[") {
+		t.Fatalf("expected no ANSI escape sequences, got: %q", string(output))
 	}
 }
 
