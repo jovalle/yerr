@@ -11,16 +11,15 @@ A lightweight, cross-platform CPU and HTTP load testing tool written in Go.
 [![Build Status](https://github.com/jovalle/yerr/actions/workflows/ci.yml/badge.svg)](https://github.com/jovalle/yerr/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/jovalle/yerr/branch/main/graph/badge.svg)](https://codecov.io/gh/jovalle/yerr)
 
-<!-- [Demo](https://blog4j.me) • [Documentation](https://yerr.github.io) • [Report Bug](https://github.com/jovalle/yerr/issues) • [Request Feature](https://github.com/jovalle/yerr/issues) -->
-
 </div>
 
 ## ✨ Features
 
-- **CPU Load Testing**: Stress test and benchmark CPUs with configurable worker and process counts
-- **HTTP Load Testing**: Stress test and benchmark web services with concurrent requests
+- **CPU Load Testing**: Stress test and benchmark CPUs with configurable worker counts and optional `GOMAXPROCS` limits
+- **HTTP Load Testing**: Stress test web services with concurrent requests, custom headers/body, auth, and timeouts
 - **Advanced Statistics**: Percentile latency reporting (P50, P90, P95, P99) inspired by wrk
 - **Error Categorization**: Detailed error tracking (connection, read, status errors)
+- **JSON Output**: Machine-readable output for CPU info/load tests, HTTP tests, and version checks
 - **Cross-Platform**: Runs on Linux, macOS, and Windows
 - **Lightweight**: No dependencies required to run, minimal resource overhead
 - **Fast**: Built with Go's concurrency primitives for maximum performance
@@ -52,12 +51,23 @@ git clone https://github.com/jovalle/yerr.git
 cd yerr
 make build
 
+# Verify the local build (current source version: 0.1.0)
+./bin/yerr version
+
 # If you have direnv installed, the bin directory is automatically added to PATH
 direnv allow
 # Now you can run: yerr cpu load -w 4 -d 5
 ```
 
 ## 🚀 Usage
+
+README examples below were reevaluated against the current CLI (`yerr version 0.1.0`).
+
+### Global Flags
+
+- `--json`: Output machine-readable JSON (supported by `cpu info`, `cpu load`, `http`, and `version`)
+- `--no-color`: Disable ANSI color output
+- `-v, --version`: Print version
 
 ### CPU Information
 
@@ -92,6 +102,9 @@ yerr cpu load --workers 4 --duration 10
 
 # Short flags
 yerr cpu load -w 8 -d 30 -p
+
+# Limit Go scheduler threads while running the test
+yerr cpu load -w 8 -d 30 --max-procs 4
 ```
 
 **What are CPU Workers?**
@@ -141,6 +154,9 @@ Modern processors like Apple Silicon (M1...M5) and Intel's 12th+ gen use **heter
 - `-d, --duration`: Test duration in seconds (default: 0 = run forever until CTRL+C)
 - `-p, --physical-only`: Use only physical cores, ignore hyperthreading/SMT (for non-heterogeneous CPUs)
 - `-c, --core-type`: Core type to use: `all`, `performance`, `efficiency` (for heterogeneous CPUs)
+- `-m, --max-procs`: Set `GOMAXPROCS` to limit OS threads/cores (default: 0 = Go default)
+
+**Global flags available here:** `--json`, `--no-color`
 
 **Examples for Heterogeneous CPUs:**
 
@@ -174,6 +190,21 @@ yerr http https://example.com -w 20 -d 30
 
 # Use POST method
 yerr http https://api.example.com/endpoint -X POST -w 5 -n 50
+
+# POST JSON with headers and timeout
+yerr http https://api.example.com/endpoint \
+  -X POST \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json' \
+  --body '{"ping":"pong"}' \
+  --timeout 5s \
+  -w 5 -n 50
+
+# Use bearer auth and JSON output
+yerr http https://api.example.com/endpoint \
+  --bearer-token "$TOKEN" \
+  --json \
+  -d 15
 ```
 
 **Flags:**
@@ -182,6 +213,34 @@ yerr http https://api.example.com/endpoint -X POST -w 5 -n 50
 - `-n, --requests`: Total number of requests (default: 100)
 - `-d, --duration`: Test duration in seconds (0 = use request count)
 - `-X, --method`: HTTP method (default: GET)
+- `-H, --header`: HTTP header in `Key: Value` format (repeatable)
+- `--body`: HTTP request body as a string
+- `--body-file`: Path to file containing request body
+- `--basic-auth`: HTTP Basic auth credentials in `username:password` format
+- `--bearer-token`: Bearer token for `Authorization` header
+- `--timeout`: Per-request timeout (default: `30s`; supports values like `5s`, `500ms`)
+
+**Validation notes:**
+
+- Use either `--body` or `--body-file` (not both)
+- Use either `--basic-auth` or `--bearer-token` (not both)
+- `--workers` must be `> 0`
+- If `--duration` is `0`, then `--requests` must be `> 0`
+
+**Global flags available here:** `--json`, `--no-color`
+
+### Version
+
+```bash
+# Print version
+yerr version
+
+# Equivalent root flag
+yerr --version
+
+# JSON output
+yerr version --json
+```
 
 ## 🥽 Examples
 
@@ -305,8 +364,10 @@ $ yerr http https://example.com -w 10 -n 1000
 
 ```text
 yerr/
-├── bin/        # Build output for binary (enrc auto imports to PATH)
+├── .github/assets/  # README images and branding assets
+├── bin/             # Build output for binary (envrc can add to PATH)
 ├── cmd/yerr/   # CLI entry point
+├── docs/       # Project documentation
 └── internal/
     ├── cpu/    # CPU load testing engine
     └── http/   # HTTP load testing engine
@@ -324,6 +385,6 @@ yerr/
 
 <div align="center">
 
-  **[⬆ back to top](#yerr)**
+**[⬆ back to top](#yerr)**
 
 </div>
